@@ -1,18 +1,11 @@
 #Consigliere
 import os
+import discord
 from dotenv import load_dotenv
 from glob import glob
-from datetime import datetime
-
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-import discord
 from discord.ext.commands import Bot as BotBase
 from discord.ext.commands import CommandNotFound
-from discord.ext import commands
-
-from ..db import db
-
+from consigliere.data.db.database import ApplicationDatabase
 
 PREFIX = "$"
 OWNER_IDS = [145989557484126209, 145984332568199169]
@@ -24,35 +17,40 @@ class Bot(BotBase):
         print('Initializing...')
         self.PREFIX = PREFIX
         self.ready = False
-        self.guild = None
-        self.scheduler = AsyncIOScheduler()
-        
-        db.autosave(self.scheduler)
+
+        #database.autosave(self.scheduler)
         super().__init__(
             intents = discord.Intents.all(),
             command_prefix=PREFIX, 
             owner_ids=OWNER_IDS)
+        
+        self.database = ApplicationDatabase(self.guilds)
+        self.database.create_tables()
+        
 
-    async def setup(self):
+    async def cog_setup(self):
         for cog in COGS:
             try:
                 await self.load_extension(f"lib.cogs.{cog}")
                 print(f"{cog} cog loaded.")
             except Exception as e:
                 print(f'Failed to load extension: {e}')
+        try:
+            bot.get_cog('MusicCog').database = lambda: self.database
+        except Exception as e:
+            print(f'Failed to pass database context to music logic: {e}')
             
         
     async def run(self, version):
         self.VERSION = version
-
         print('Loading cogs...')
-        await self.setup()
+        await self.cog_setup()
 
         print("Fetching token...")
         load_dotenv()
         self.TOKEN = os.getenv('DISCORD_TOKEN')
 
-        print("Bot running...")
+        print("Initialization Completed. Bot running...")
         await super().start(self.TOKEN, reconnect=True)
 
     async def on_connect(self):
@@ -78,8 +76,6 @@ class Bot(BotBase):
     async def on_ready(self):
         if not self.ready:
             self.ready = True
-            self.get_guild(948281049018957864)
-            self.scheduler.start()
             print('Bot is ready!')
 
         else:
