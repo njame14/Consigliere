@@ -1,5 +1,5 @@
-from lib.bot import bot
+from lib.bot.bot import bot
 import asyncio
 
 VERSION = "0.1"
-asyncio.run(bot.bot.run(VERSION))
+asyncio.run(bot.start(VERSION))

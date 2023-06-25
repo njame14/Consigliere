@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 DB_PATH = f"{os.getcwd()}/consigliere/data/db/database.db"
 Base = declarative_base()
+Metadata = Base.metadata
 
 def dbFileCreator():
     if os.path.isfile(DB_PATH):
@@ -18,31 +19,39 @@ def dbFileCreator():
             print("Database file created successfully.")
         except Exception as e:
             raise e
+
+class ApplicationDatabaseCtx:
+    from consigliere.data.models.music_data import MusicData
+    from consigliere.data.models.servers import Server
         
 
 class ApplicationDatabase:
-    def __init__(self, guilds):
+    def __init__(self):
         print('Initializing database...')
         dbFileCreator()
         self.engine = create_engine(f'sqlite:///{DB_PATH}', echo=True)
         self.Session = sessionmaker(bind=self.engine)
-
-
-    #Creates tables as specified in db.models
-    def create_tables(self):
-        #Models
-        from consigliere.data.models.servers import Server
-        Server.__table__.create(bind=self.engine)
-        from consigliere.data.models.music_data import MusicData
-        MusicData.__table__.create(bind=self.engine)
-        Base.metadata.create_all(self.engine)
+        self.context = ApplicationDatabaseCtx()
+        self.create_tables()
     
+    def create_tables(self):
+        self.context.Server.__table__.create(bind=self.engine, checkfirst=True)
+        self.context.MusicData.__table__.create(bind=self.engine,checkfirst=True)
+      
     #Drops all tables
     def drop_tables(self):
         Base.metadata.drop_all(self.engine)
 
+
+            
+
+
+#TODO: Get(Read)
+#TODO: Update(Update)
+#TODO: Delete(Delete)
+
 #####################################################################################
-#Db Functions(Probably not needed)
+#SQL Functions(Probably not needed)
 #####################################################################################
 
     #Decorator allows you to run db function within a transaction
@@ -93,3 +102,5 @@ class ApplicationDatabase:
         self.Session.execute(command, valueset)
 
 # event.listen(ApplicationDatabase.Session, 'after_commit', ApplicationDatabase.autosave)
+
+AppDB = ApplicationDatabase()
