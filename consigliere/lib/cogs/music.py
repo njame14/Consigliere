@@ -1,86 +1,110 @@
-import discord
+from consigliere.lib.cogs.utils import musicUtils
 from discord.ext.commands import Cog
-from discord.ext import commands
-import utils.musicUtils
-import asyncio
-import requests
-import time
-
-# # Dictionary to store server-specific voice channels and queues
-# voice_channels = {}
-# voice_queues = {}
+from discord.ext.commands.context import Context
+from discord.voice_client import VoiceClient
+import discord.ext.commands as commands
 
 class MusicCog(Cog):
-    def __init__(self, bot, db):
+    def __init__(self, bot):
         self.bot = bot
-        self.db = db
+        self.db = bot.database
+        self.context = bot.database.context
+
+        session = self.db.Session()
+        session.query(self.context.MusicData).delete()
+        session.commit()
         
     #Checks if user is in a voice channel when requesting bot to play music 
-    async def ensure_voice(self, ctx):
+    async def ensure_voice(self, ctx : Context):
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
             else:
                 await ctx.send("You are not connected to a voice channel.")
-                #raise commands.CommandError("Author not connected to a voice channel.")
+                raise
+            return
+        elif ctx.voice_client.channel == ctx.author.voice.channel:
+            return
         elif ctx.voice_client.is_playing():
             ctx.voice_client.stop()
             await ctx.author.voice.channel.connect()
+            return
 
-    # @commands.command()
-    # async def play(self, ctx, url):
-    #     voice_channel = ctx.message.author.voice.channel
+    @commands.command()
+    async def play(self, ctx : Context, url):
+        await self.ensure_voice(ctx)
+        server_id = ctx.guild.id
+        requester = ctx.message.author
+        voice_channel = ctx.message.author.voice.channel
+        session = self.db.Session()
 
-    #     if not voice_channel:
-    #         await ctx.send("You are not connected to a voice channel.")
-    #         return
+        if musicUtils.is_valid_url(url) is False:
+            return await ctx.send("That is not a valid URL.")
+        
+        try:
+            queue = session.query(self.context.MusicData).filter(self.context.MusicData.server_id == server_id).order_by(self.context.MusicData.queue_pos).all()
+            positon = 0
+            new_song = self.context.MusicData
+            if len(queue) == 0:
+                new_song = self.context.MusicData(
+                    server_id=server_id, 
+                    requester_id=requester.id,
+                    url=url,
+                    queue_pos=1)
+            else:
+                #Find Queue Position
+                positon = max(queue, key=lambda obj: obj.queue_pos).queue_pos + 1
+                new_song = self.context.MusicData(
+                    server_id=server_id, 
+                    requester_id=requester.id,
+                    url=url,
+                    queue_pos=positon)
+            session.add(new_song)
+            session.commit()
+        except Exception as e:
+            print(e)
+        
+        queue = session.query(self.context.MusicData).filter(self.context.MusicData.server_id == server_id).all()
+        if(ctx.voice_client is None):
+            raise
+        if(ctx.voice_client is not None and ctx.voice_client.is_playing()):
+            await ctx.send(f'Added to queue. {positon}/{len(queue)}.')
+            return
+        player = await musicUtils.YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        ctx.voice_client.play(player, after=lambda e: self.play_next(ctx, new_song))   # Set the callback function for when the player finishes
+        await ctx.send(f"Now Playing {ctx.voice_client.source.title}.")
 
-    #     if voice_channel.guild.id in voice_channels:
-    #         if voice_channels[voice_channel.guild.id].is_playing():
-    #             voice_queues[voice_channel.guild.id].append(url)
-    #             await ctx.send("Added to queue.")
-    #             return
-    #     else:
-    #         voice_channels[voice_channel.guild.id] = await voice_channel.connect()
-    #         voice_queues[voice_channel.guild.id] = []
+        #Logic to retrieve the next song from the music table and play it
+        async def play_next(self, ctx: Context, new_song: self.context.MusicData):
+            await ctx.send(f"Entered AutoPlay: Now Playing {ctx.voice_client.source.title}.")
+            server_id = ctx.guild.id
+            session = self.db.Session()
+            try:
+                session.delete(new_song)
+                next_song_url = session.query(self.context.MusicData).filter(self.context.MusicData.server_id == server_id).order_by(self.context.MusicData.queue_pos).first().url
+                if next_song_url:
+                    player = await musicUtils.YTDLSource.from_url(next_song_url, loop=self.bot.loop, stream=True)
+                    if(ctx.voice_client.is_playing() is False):
+                        ctx.voice_client.play(player, after=lambda e: self.play_next(ctx))  # Set the callback function for when the player finishes
+                        await ctx.send("Playing next song...")
+                    return
+                else:
+                    # No more songs in the queue, do something (e.g., stop playback, send a message, etc.)
+                    await ctx.send("No more songs in the queue.")
+            except Exception as e:
+                print(e)
 
-    #     voice_channels[voice_channel.guild.id].play(discord.FFmpegPCMAudio(url))
-    #     await ctx.send("Playing...")
 
-    # @ensure_voice
-    # async def play(self, ctx, url):
-    #     server_id = str(ctx.guild.id)
-    #     requester = str(ctx.message.author)
-    #     voice_channel = ctx.message.author.voice.channel
-    #     db = self.db
-
-    #     #Voice check ensured by @ensure-voice
-
-    #     db
-    #     c.execute("SELECT voice_channel_id, queue FROM server_data WHERE server_id=?", (server_id,))
-    #     row = c.fetchone()
-
-    #     if row and row[0] and bot.get_channel(int(row[0])):
-    #         if bot.get_channel(int(row[0])).guild.voice_client.is_playing():
-    #             new_queue = row[1] + ',' + url if row[1] else url
-    #             c.execute("UPDATE server_data SET queue=? WHERE server_id=?", (new_queue, server_id))
-    #             await ctx.send("Added to queue.")
-    #             return
-    #     else:
-    #         voice_channel_id = str(voice_channel.id)
-    #         queue = url
-    #         c.execute("INSERT OR REPLACE INTO server_data (server_id, voice_channel_id, queue) VALUES (?, ?, ?)",
-    #                 (server_id, voice_channel_id, queue))
-    #         c.commit()
-
-    #     voice_client = await voice_channel.connect()
-    #     voice_client.play(discord.FFmpegPCMAudio(url))
-    #     await ctx.send("Playing...")
-
+    # @commands.before_invoke(ensure_voice)
     # @commands.command()
     # async def stop(self, ctx):
     #     voice_channel = ctx.message.author.voice.channel
 
+    #     result = self.db.Session().query(self.context.Server).filter(self.context.Server.id == ctx.guild.id).first()
+        
+    #     if result is None:
+    #         raise Exception("Server not found.")
+        
     #     if voice_channel.guild.id in voice_channels:
     #         voice_channels[voice_channel.guild.id].stop()
     #         voice_queues[voice_channel.guild.id] = []
@@ -89,6 +113,29 @@ class MusicCog(Cog):
     #         await ctx.send("Stopped and disconnected.")
     #     else:
     #         await ctx.send("The bot is not connected to a voice channel in this server.")
+    @commands.command()
+    async def stop(self, ctx : Context):
+        await self.ensure_voice(ctx)
+        if ctx.voice_client and ctx.voice_client.is_playing():
+            session = self.db.Session()
+            #Remove all music data related to server in ctx
+            session.query(self.context.MusicData).filter(self.context.MusicData.server_id == ctx.guild.id).delete()
+            session.commit()
+            await ctx.voice_client.disconnect()
+            await ctx.send("Cya bozo!")
+            
+
+    @commands.before_invoke(ensure_voice)
+    @commands.command()
+    async def skip(self, ctx : Context):
+        voice_client = ctx.voice_client
+        if voice_client and voice_client.is_playing():
+            voice_client.stop()
+            await self.play_next(ctx)
+            await ctx.send("Skipped to the next song.")
+        else:
+            await ctx.send("No song is currently playing.")
+    
 
     # @commands.command()
     # async def queue(self, ctx, url):
@@ -100,23 +147,6 @@ class MusicCog(Cog):
     #     else:
     #         await ctx.send("The bot is not connected to a voice channel in this server.")
 
-    # @commands.command()
-    # async def skip(self, ctx):
-    #     voice_channel = ctx.message.author.voice.channel
-
-    #     if voice_channel.guild.id in voice_channels:
-    #         if voice_channels[voice_channel.guild.id].is_playing():
-    #             voice_channels[voice_channel.guild.id].stop()
-    #             if len(voice_queues[voice_channel.guild.id]) > 0:
-    #                 next_url = voice_queues[voice_channel.guild.id].pop(0)
-    #                 voice_channels[voice_channel.guild.id].play(discord.FFmpegPCMAudio(next_url))
-    #                 await ctx.send("Skipping to the next track...")
-    #             else:
-    #                 await ctx.send("No more tracks in the queue.")
-    #         else:
-    #             await ctx.send("No track is currently playing.")
-    #     else:
-    #         await ctx.send("The bot is not connected to a voice channel in this server.")
 
     @Cog.listener()
     async def on_ready(self):
