@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 from glob import glob
 from discord.ext.commands import Bot as BotBase
 from discord.ext.commands import CommandNotFound
-from consigliere.data.db.database import AppDB
+from consigliere.data.db.database import ApplicationDatabase
 
 PREFIX = "$"
-OWNER_IDS = [145989557484126209, 145984332568199169]
+OWNER_IDS = [145989557484126209]
 COGS = [path.split("\\")[-1][:-3] for path in glob("consigliere/lib/cogs/*.py")]
 COGS.remove("__init__")
 
@@ -16,16 +16,22 @@ COGS.remove("__init__")
 #super() refers to BotBase
 class Bot(BotBase):
     def __init__(self):
-        print('Initializing...')
+        print('Initializing Bot...')
+
+        # Initialize the database
+        try:
+            self.database = ApplicationDatabase()
+        except Exception as e:
+            print(f"Failed to initialize database: {e}")
+            raise e  # or handle it as you see fit
+
         self.PREFIX = PREFIX
         self.ready = False
-
         super().__init__(
-            intents = discord.Intents.all(),
+            intents=discord.Intents.all(),
             command_prefix=PREFIX, 
-            owner_ids=OWNER_IDS)
-        
-        self.database = AppDB
+            owner_ids=OWNER_IDS
+        )
         
     async def cog_setup(self):
         for cog in COGS:

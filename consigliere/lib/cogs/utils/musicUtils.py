@@ -3,7 +3,7 @@ import discord
 import asyncio
 import requests
 
-def is_valid_url(url):
+def validateUrl(url):
     try:
         response = requests.head(url)
         return response.status_code == requests.codes.ok
