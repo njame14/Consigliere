@@ -7,8 +7,7 @@ from discord.ext.commands import Bot as BotBase
 from discord.ext.commands import CommandNotFound
 from consigliere.data.db.database import ApplicationDatabase
 
-PREFIX = "$"
-OWNER_IDS = [145989557484126209]
+PREFIX = "$
 COGS = [path.split("\\")[-1][:-3] for path in glob("consigliere/lib/cogs/*.py")]
 COGS.remove("__init__")
 
