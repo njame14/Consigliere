@@ -11,11 +11,6 @@ class MusicCog(Cog):
         self._database = bot.database
         self.MusicData = bot.database.context.MusicData
 
-        # Consider retaining the queue across bot restarts in production
-        with bot.database.Session() as session:
-            session.query(self.MusicData).delete()
-            session.commit()
-
     #Checks if user is in a voice channel when requesting bot to play music 
     async def ensure_voice(self, ctx : Context):
         #If bot is not connected to a voice channel
