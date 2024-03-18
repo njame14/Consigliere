@@ -1,0 +1,9 @@
+__pycache__
+.vscode
+consigliere/lib/bot/.env
+consigliere.egg-info
+consigliere/data/db/database.db
+venv
+
+
+

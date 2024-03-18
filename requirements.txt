@@ -1,0 +1,7 @@
+discord.py
+gTTS
+python-dotenv
+Requests
+setuptools
+SQLAlchemy
+yt_dlp
