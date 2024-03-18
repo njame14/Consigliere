@@ -8,9 +8,9 @@ from discord.ext.commands import CommandNotFound
 from db.database import ApplicationDatabase
 
 PREFIX = "$"
-print(os.getcwd())
-COGS = [path.split("\\")[-1][:-3] for path in glob("consigliere/cogs/*.py")]
-COGS.remove("__init__")
+COGS = [os.path.basename(path)[:-3] for path in glob(os.path.join("consigliere", "cogs", "*.py"))]
+if "__init__" in COGS:
+    COGS.remove("__init__")
 
 #Bot is based on discord.ext.commands.Bot(BotBase) to add additional functionality
 #super() refers to BotBase
