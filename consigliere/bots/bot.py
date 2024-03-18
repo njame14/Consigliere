@@ -5,10 +5,11 @@ from dotenv import load_dotenv
 from glob import glob
 from discord.ext.commands import Bot as BotBase
 from discord.ext.commands import CommandNotFound
-from data.db.database import ApplicationDatabase
+from db.database import ApplicationDatabase
 
 PREFIX = "$"
-COGS = [path.split("\\")[-1][:-3] for path in glob("consigliere/lib/cogs/*.py")]
+print(os.getcwd())
+COGS = [path.split("\\")[-1][:-3] for path in glob("consigliere/cogs/*.py")]
 COGS.remove("__init__")
 
 #Bot is based on discord.ext.commands.Bot(BotBase) to add additional functionality
@@ -36,7 +37,7 @@ class Bot(BotBase):
     async def cog_setup(self):
         for cog in COGS:
             try:
-                await self.load_extension(f"lib.cogs.{cog}")
+                await self.load_extension(f"cogs.{cog}")
             except Exception as e:
                 print(f'Failed to load extension: {e}')
         
@@ -114,5 +115,3 @@ class Bot(BotBase):
             
             session.add_all(newServers)
             session.commit()
- 
-bot = Bot() #Creates an instance of the bot class

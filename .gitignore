@@ -1,8 +1,8 @@
 __pycache__
 .vscode
-consigliere/lib/bot/.env
+*.env
 consigliere.egg-info
-consigliere/data/db/database.db
+*.db
 venv
 
 

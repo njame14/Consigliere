@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from consigliere.data.db.database import Base
+from db.database import Base
 
 class Server(Base):
     __tablename__ = 'servers'
