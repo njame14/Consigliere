@@ -1,4 +1,4 @@
-from consigliere.lib.cogs.utils import MusicUtils
+from cogs.utils import MusicUtils
 from discord.ext.commands import Cog
 from discord.ext.commands.context import Context
 from discord.ext.commands import command

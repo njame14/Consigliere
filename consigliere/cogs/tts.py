@@ -1,8 +1,7 @@
 import discord
 from discord.ext.commands import Cog
 from discord.ext import commands
-from gtts import gTTS 
-import os
+from gtts import gTTS
 
 class TTSCog(Cog):
     def __init__(self, bot):
@@ -25,7 +24,6 @@ class TTSCog(Cog):
             #Move
             await ctx.voice_client.move_to(ctx.author.voice.channel)
         ctx.voice_client.play(discord.FFmpegPCMAudio("tts.mp3"))
-        #await ctx.voice_client.disconnect()
 
     @Cog.listener()
     async def on_ready(self):

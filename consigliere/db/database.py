@@ -3,12 +3,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Define path for database
-DB_PATH = os.path.join(os.getcwd(), 'consigliere/data/db/database.db')
+
+#Get directory of database.py
+dirPath = os.path.dirname(__loader__.path)
+DB_PATH = os.path.join(dirPath, 'database.db')
 Base = declarative_base()
 
 class ApplicationDatabaseCtx:
-    from consigliere.data.models.music_data import MusicData
-    from consigliere.data.models.servers import Server
+    from db.models.music_data import MusicData
+    from db.models.servers import Server
 
 class ApplicationDatabase:
     def __init__(self):
